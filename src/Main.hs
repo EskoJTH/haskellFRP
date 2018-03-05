@@ -13,6 +13,7 @@ import Reactive.Banana.Frameworks
 import Reactive.Banana.SDL2
 import qualified Data.Text as T
 
+--defining a window
 myWindow = WindowConfig
   { windowBorder       = True
   , windowHighDPI      = False
@@ -24,12 +25,13 @@ myWindow = WindowConfig
   , windowInitialSize  = V2 1500 1000
   }
 
+--defining a renderer
 myRenderer = RendererConfig
   { rendererType          = AcceleratedVSyncRenderer
   , rendererTargetTexture = True
   }
 
-
+--put things to run
 main :: IO ()
 main = do
   initializeAll
@@ -37,13 +39,17 @@ main = do
   renderer <- createRenderer window (-1) myRenderer
   appLoop renderer
 
+--clikc target square
 square = Rect { rectX = 10,
                 rectY = 20,
                 rectW = 30,
                 rectH = 40}
 
+--main loop logic
 appLoop :: Renderer -> IO ()
 appLoop renderer = do
+  
+  --basic SDL2 thins not sure if neede with Reactive-Banana
   events <- pollEvents
   clear renderer
   let eventIsQPress event =
@@ -52,48 +58,62 @@ appLoop renderer = do
             keyboardEventKeyMotion keyboardEvent == Pressed &&
             keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
           _ -> False
+      --saves an event result in basic SDL2 style
       qPressed = any eventIsQPress events
 
-  kissa <- getSDLEventSource
+  --Gets the surroundings not sure if actually needed
+  previousSetting <- getSDLEventSource
 
-  -- :: MonadMoment a => a ()
+
+  --actual FRP part
   let networkDescription :: MomentIO () 
       networkDescription= do
-
-        --addHandler kissa --Gives me addHandler from event source
-        --momentIO <- compile $ sdlEvent kissa
-        current <- sdlEvent kissa
+        
+        --Filter and save the wanted events using Reactive-Banana-SDL2 library
+        current <- sdlEvent previousSetting
         let mouseDown = keyDownEvent $ mouseButtonEvent $ mouseEventWithin square current
         let mouseRelease = keyDownEvent $ mouseButtonEvent $ mouseEvent current
 
+        --old trials
         --mouseUp <- mouseEventWithin $ eventSource $ Rectangle (P (V2 10 20)) (V2 30 40)customMouseButtonUp window
         --mouseDown <- mouseButtonEvent $ customMouseButtonDown window
 
+        --Turn the events into an behavior that has the wanted color as a function of time
+        --I probably need to add the main loop into a behaviour like this
+            --for it to happen constantly
         (colorer :: Behavior (V4 Word8)) <- accumB (colorNotBlue) $ unions [(\x->(colorBlue)) <$ mouseDown,
-                                                                              (\x->(colorNotBlue)) <$ mouseRelease]
+                                                                            (\x->(colorNotBlue)) <$ mouseRelease]
+        --old trials
         --color <- valueB colorer
         --let eventsource = ((register (\color->do rectangleColor renderer color)), rectangleColor renderer)
-
         --valueB register (fmap handler colorer) where
         
         let doing c = do
+              --double do?
               rectangleColor renderer c
+              --blue background
               rendererDrawColor renderer $= colorBlue
+              --show stuff
               present renderer
+              --This is supposed to create the loop but it seems to currently fail
               appLoop renderer
 
+        --changes appears to be one way to convert the io(doing) inside the colorer behaviour into something reactimate can read.
         future <- changes $ doing <$> colorer
 
+        --reactimate appears to be the way to run io inside a behaviour.
         reactimate' $ future
 
 
   
-  --runSDLPump
+  --runSDLPump?
+
+  --compiles the behaviour
   network <- compile networkDescription
   actuate network
 
   
---color V4 0 255 0 255
+--sets a a "color" to a rectangle in the window
 rectangleColor :: Renderer -> V4 Word8 -> IO()
 rectangleColor renderer color = do
   rendererDrawColor renderer $= color
@@ -103,5 +123,5 @@ colorBlue :: V4 Word8
 colorBlue =  V4 0 0 255 255
 
 colorNotBlue :: V4 Word8
-colorNotBlue = V4 0 255 0 255
+colorNotBlue = V4 0 255 0 0
 
