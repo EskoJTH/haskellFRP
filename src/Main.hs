@@ -39,7 +39,7 @@ main = do
   renderer <- createRenderer window (-1) myRenderer
   appLoop renderer
 
---clikc target square
+--click target square
 square = Rect { rectX = 10,
                 rectY = 20,
                 rectW = 30,
@@ -73,6 +73,8 @@ appLoop renderer = do
         current <- sdlEvent previousSetting
         let mouseDown = keyDownEvent $ mouseButtonEvent $ mouseEventWithin square current
         let mouseRelease = keyDownEvent $ mouseButtonEvent $ mouseEvent current
+        --escape quits
+        let oneKeyDown = keyDownEvent current
 
         --old trials
         --mouseUp <- mouseEventWithin $ eventSource $ Rectangle (P (V2 10 20)) (V2 30 40)customMouseButtonUp window
@@ -81,22 +83,21 @@ appLoop renderer = do
         --Turn the events into an behavior that has the wanted color as a function of time
         --I probably need to add the main loop into a behaviour like this
             --for it to happen constantly
-        (colorer :: Behavior (V4 Word8)) <- accumB (colorNotBlue) $ unions [(\x->(colorBlue)) <$ mouseDown,
-                                                                            (\x->(colorNotBlue)) <$ mouseRelease]
+        (colorer :: Behavior (LoopState)) <- accumB (Loop) $ unions [(\x->MyColor) <$ mouseDown,
+                                                                      (\x->Loop) <$ mouseRelease,
+                                                                      (\x->Quit) <$ oneKeyDown]
         --old trials
         --color <- valueB colorer
         --let eventsource = ((register (\color->do rectangleColor renderer color)), rectangleColor renderer)
         --valueB register (fmap handler colorer) where
+
         
-        let doing c = do
-              --double do?
-              rectangleColor renderer c
-              --blue background
-              rendererDrawColor renderer $= colorBlue
-              --show stuff
-              present renderer
-              --This is supposed to create the loop but it seems to currently fail
-              appLoop renderer
+        let doing :: LoopState -> IO()
+            doing (MyColor) = do
+              ioLogic renderer colorBlue
+            doing Loop = do
+              ioLogic renderer colorNotBlue
+            doing Quit = do return ()
 
         --changes appears to be one way to convert the io(doing) inside the colorer behaviour into something reactimate can read.
         future <- changes $ doing <$> colorer
@@ -112,12 +113,20 @@ appLoop renderer = do
   network <- compile networkDescription
   actuate network
 
+data LoopState = Loop|Quit|MyColor
   
 --sets a a "color" to a rectangle in the window
-rectangleColor :: Renderer -> V4 Word8 -> IO()
-rectangleColor renderer color = do
+ioLogic :: Renderer -> V4 Word8 -> IO()
+ioLogic renderer color = do
   rendererDrawColor renderer $= color
   fillRect renderer $ Just $ Rectangle (P (V2 10 20)) (V2 30 40)
+  --blue background
+  rendererDrawColor renderer $= colorBlue
+  --show stuff
+  present renderer
+  --This is supposed to create the loop but it seems to currently fail
+  appLoop renderer
+
 
 colorBlue :: V4 Word8
 colorBlue =  V4 0 0 255 255
