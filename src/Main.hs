@@ -11,6 +11,7 @@ import Linear.V4
 import Reactive.Banana
 import Reactive.Banana.Frameworks
 import Reactive.Banana.SDL2
+import Reactive.Banana.SDL2.Types
 import qualified Data.Text as T
 
 --defining a window
@@ -49,7 +50,8 @@ square = Rect { rectX = 10,
 appLoop :: Renderer -> IO ()
 appLoop renderer = do
   
-  --basic SDL2 thins not sure if neede with Reactive-Banana
+  --basic SDL2 thins not sure if needed with Reactive-Banana
+  {-
   events <- pollEvents
   clear renderer
   let eventIsQPress event =
@@ -60,25 +62,27 @@ appLoop renderer = do
           _ -> False
       --saves an event result in basic SDL2 style
       qPressed = any eventIsQPress events
-
+  -}
   --Gets the surroundings not sure if actually needed
-  previousSetting <- getSDLEventSource
+  events <- getSDLEventSource
+  let (adder, handler) = getSDLEvent events
+
+  --register adder _ -- wrappedEvent   Event EventPayload      
+
+
 
 
   --actual FRP part
+  --This is the way WX seemed to work
   let networkDescription :: MomentIO () 
       networkDescription= do
         
         --Filter and save the wanted events using Reactive-Banana-SDL2 library
-        current <- sdlEvent previousSetting
+        current <- sdlEvent events
         let mouseDown = keyDownEvent $ mouseButtonEvent $ mouseEventWithin square current
         let mouseRelease = keyDownEvent $ mouseButtonEvent $ mouseEvent current
         --escape quits
         let oneKeyDown = keyDownEvent current
-
-        --old trials
-        --mouseUp <- mouseEventWithin $ eventSource $ Rectangle (P (V2 10 20)) (V2 30 40)customMouseButtonUp window
-        --mouseDown <- mouseButtonEvent $ customMouseButtonDown window
 
         --Turn the events into an behavior that has the wanted color as a function of time
         --I probably need to add the main loop into a behaviour like this
@@ -91,27 +95,28 @@ appLoop renderer = do
         --let eventsource = ((register (\color->do rectangleColor renderer color)), rectangleColor renderer)
         --valueB register (fmap handler colorer) where
 
-        
         let doing :: LoopState -> IO()
             doing (MyColor) = do
               ioLogic renderer colorBlue
             doing Loop = do
               ioLogic renderer colorNotBlue
             doing Quit = do return ()
-
+  
         --changes appears to be one way to convert the io(doing) inside the colorer behaviour into something reactimate can read.
-        future <- changes $ doing <$> colorer
+        behaviourAsEvents <- changes $ doing <$> colorer
 
         --reactimate appears to be the way to run io inside a behaviour.
-        reactimate' $ future
+        reactimate' $ behaviourAsEvents 
 
 
   
-  --runSDLPump?
-
   --compiles the behaviour
   network <- compile networkDescription
   actuate network
+
+  -- Reactive Banana SDL2 Loop
+  
+  runCappedSDLPump 144 events
 
 data LoopState = Loop|Quit|MyColor
   
