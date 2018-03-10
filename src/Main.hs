@@ -13,6 +13,7 @@ import Reactive.Banana.Frameworks
 import Reactive.Banana.SDL2
 import Reactive.Banana.SDL2.Types
 import qualified Data.Text as T
+import Debug.Trace as De
 
 --defining a window
 myWindow = WindowConfig
@@ -38,69 +39,50 @@ main = do
   initializeAll
   window <- createWindow "Strory of a small green rectangle" myWindow
   renderer <- createRenderer window (-1) myRenderer
-  appLoop renderer
+  appLoop renderer window
 
 --click target square
-square = Rect { rectX = 10,
+--Change to "Point" Rectangle as used in SDL2?
+square = Rect { rectX = 20,
                 rectY = 20,
-                rectW = 30,
-                rectH = 40}
+                rectW = 100,
+                rectH = 100}
 
 --main loop logic
-appLoop :: Renderer -> IO ()
-appLoop renderer = do
-  
-  --basic SDL2 thins not sure if needed with Reactive-Banana
-  {-
-  events <- pollEvents
-  clear renderer
-  let eventIsQPress event =
-        case eventPayload event of
-          KeyboardEvent keyboardEvent ->
-            keyboardEventKeyMotion keyboardEvent == Pressed &&
-            keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
-          _ -> False
-      --saves an event result in basic SDL2 style
-      qPressed = any eventIsQPress events
-  -}
-  --Gets the surroundings not sure if actually needed
+appLoop :: Renderer -> Window -> IO ()
+appLoop renderer window = do
+
   events <- getSDLEventSource
-  let (adder, handler) = getSDLEvent events
-
-  --register adder _ -- wrappedEvent   Event EventPayload      
-
-
+  -- let (adder, handler) = getSDLEvent events
 
 
   --actual FRP part
-  --This is the way WX seemed to work
   let networkDescription :: MomentIO () 
       networkDescription= do
         
         --Filter and save the wanted events using Reactive-Banana-SDL2 library
         current <- sdlEvent events
-        let mouseDown = keyDownEvent $ mouseButtonEvent $ mouseEventWithin square current
-        let mouseRelease = keyDownEvent $ mouseButtonEvent $ mouseEvent current
-        --escape quits
+        
+        --mouseEvent within works wrong. detects all mouse events apparently. On the original R.Banana.SDL2 it is undefined.
+        let mouseDown = mouseButtonEvent $ mouseEvent current   --mouseEventWithin square current
+        let mouseRelease = mouseButtonEvent $ mouseEvent current
         let oneKeyDown = keyDownEvent current
 
         --Turn the events into an behavior that has the wanted color as a function of time
         --I probably need to add the main loop into a behaviour like this
             --for it to happen constantly
-        (colorer :: Behavior (LoopState)) <- accumB (Loop) $ unions [(\x->MyColor) <$ mouseDown,
-                                                                      (\x->Loop) <$ mouseRelease,
+        (colorer :: Behavior (LoopState)) <- accumB (NotBlue) $ unions [ --mouseDownHandle <$> mouseDown, --use with mouseEventWithin
+                                                                      mouseUpHandle <$> mouseRelease, 
                                                                       (\x->Quit) <$ oneKeyDown]
-        --old trials
-        --color <- valueB colorer
-        --let eventsource = ((register (\color->do rectangleColor renderer color)), rectangleColor renderer)
-        --valueB register (fmap handler colorer) where
-
+        --Execute different IO states.
         let doing :: LoopState -> IO()
-            doing (MyColor) = do
-              ioLogic renderer colorBlue
-            doing Loop = do
-              ioLogic renderer colorNotBlue
-            doing Quit = do return ()
+            doing Blue = do
+              De.trace "loop1" ioLogic renderer colorBlue
+            doing NotBlue = do
+              De.trace "loop2" ioLogic renderer colorNotBlue
+            doing Quit = do
+              destroyWindow window
+              destroyRenderer renderer
   
         --changes appears to be one way to convert the io(doing) inside the colorer behaviour into something reactimate can read.
         behaviourAsEvents <- changes $ doing <$> colorer
@@ -108,29 +90,48 @@ appLoop renderer = do
         --reactimate appears to be the way to run io inside a behaviour.
         reactimate' $ behaviourAsEvents 
 
-
-  
   --compiles the behaviour
-  network <- compile networkDescription
+   
+  network <-compile networkDescription
   actuate network
 
   -- Reactive Banana SDL2 Loop
   
-  runCappedSDLPump 144 events
+  runCappedSDLPump 60 events
 
-data LoopState = Loop|Quit|MyColor
+
+mouseUpHandle :: EventPayload -> LoopState -> LoopState
+mouseUpHandle wre a = case wre of
+  SDL.MouseButtonEvent (MouseButtonEventData _ Pressed _ _ _ _)   -> Blue
+  _ -> NotBlue
+
+
+mouseDownHandle ::  EventPayload -> LoopState -> LoopState
+mouseDownHandle wre a = case wre of
+  SDL.MouseButtonEvent (MouseButtonEventData _ Released _ _ _ _) -> NotBlue
+  _ -> NotBlue
+
+
+data LoopState = Blue|Quit|NotBlue
+
   
 --sets a a "color" to a rectangle in the window
 ioLogic :: Renderer -> V4 Word8 -> IO()
 ioLogic renderer color = do
-  rendererDrawColor renderer $= color
-  fillRect renderer $ Just $ Rectangle (P (V2 10 20)) (V2 30 40)
+
+  clear renderer
+  
   --blue background
   rendererDrawColor renderer $= colorBlue
-  --show stuff
+  fillRect renderer Nothing
+  
+  --the small green rectangle
+  rendererDrawColor renderer $= color
+  fillRect renderer $ Just $ Rectangle (P (V2 20 20)) (V2 100 100)
+
+  putStrLn "looped"
+
   present renderer
-  --This is supposed to create the loop but it seems to currently fail
-  appLoop renderer
 
 
 colorBlue :: V4 Word8
