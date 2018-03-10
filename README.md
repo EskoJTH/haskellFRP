@@ -1,17 +1,15 @@
-Trying to figure out FRP in haskell. Most important used tools are Reactive-Banana and Reactive-Banana-SDL2 and SDL2. At the moment of writing WX appears to be brokent in latest version of GHC so that is one reason to use SDL instead. I have managed to get some FRP mixed with regular SDL2 so that the code compiles but the gui loop doesn't sustain itself for some reason yet. The program is supposed to display a turquoise window with a red square in it that turns turquoise while mouse click is detected on top of it and turns back red once button is raised. I already managed to do this with only SDL2 withouth the events just following the documetation.
+# Example on functional reactive programming with Reactive.Banana.SDL2 #
+## Current state ##
+The Example is operational. Shows a blue window with a green square in it that dissappears upon mouse press and reappears on mouse release. Any keyboard button will close the window and renderer but not stop the execution.
 
-# Current state #
-Yey! The program compiles and runs with displaying a transparent window which crashes as soon as you move the mouse. But it runs and something definitely happens!
-
-# Difficulties with gui libraries #
+## Difficulties with gui libraries ##
 * WX seems to be very difficult to get to work. Had disambiguous type definitions with latest GHC around 20.2.2018
 * SDL2 seems to work on linux pretty easily. I am using that currently . I have not been able to compile the necessary libraries on windows yet. seems like a bunch of work. The binaries meant for windows didn't want to be recognized by windows10.
+* Reactive.Banana.SDL2 doesn't have good documentation and it needs some improvement. You can use this as an example. Don't be afraid to look at the source code of Reactive.Banana.SDL2.
 
-# Building #
-* I use and recommend using haskell tool stack to build the program
+## Building ##
+* I recommend using haskell tool stack to build the program
 * You will need SDL2 binaries. I got them on ubuntu simply by running "sudo apt install libsdl2-dbg libsdl2-dev"
-* I believe there might have been something weird related to running DSL2 with stack exec PROGRAMEXE. I think I may have been having to run the program directly from some executable somewhere in .stack-work folder but I can't remember anymore.
-* I would simply create new stack project and pull this repository directly there removing all duplicate files and the old "YOURPROJECTNAME.cabal" file to make stack detect "frp.cabal" . On linux this might directly work with no changes to either .yaml file. Then remember to run "stack update", "stack upgrade" and "stack build". Executing should work by "stack exec frp-exe". You might also need to install some SDL2 libraries.
-* There is probably a bette way to do the previous that I am currently unaware of.
+* I would simply create new stack project and pull this repository directly there removing all duplicate files and the old "YOURPROJECTNAME.cabal" file to make stack detect "frp.cabal" . On linux this might directly work with no changes to either .yaml file. Then remember to run "stack update", "stack upgrade" and "stack build". Executing should work by "stack exec frp-exe". You might also need to install the SDL2 libraries.
 * stack build will probably take several minutes.
 
