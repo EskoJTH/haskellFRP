@@ -2,9 +2,8 @@
 
 The example is operational. Shows a blue window with a green square in it that dissappears upon mouse press and reappears on mouse release. Any keyboard button will close the window and renderer but not stop the execution.
 
-## Difficulties with gui libraries ##
-* WX seems to be very difficult to get to work. Had disambiguous type definitions with latest GHC around 20.2.2018
-* SDL2 seems to work on linux pretty easily. I am currently using that. I have not been able to compile the necessary libraries on windows yet. seems like a bunch of work. The binaries meant for windows didn't want to be recognized by windows10.
+## SDL2 ##
+* SDL2 seems to work on linux pretty easily. I have not been able to compile the necessary libraries on windows yet. seems like a bunch of work. The binaries meant for windows didn't want to be recognized by windows10.
 * Reactive.Banana.SDL2 doesn't have good documentation and it needs some improvement. You can use this as an example. Don't be afraid to look at the source code of Reactive.Banana.SDL2.
 
 ## Building ##
